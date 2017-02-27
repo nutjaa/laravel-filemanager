@@ -6,5 +6,6 @@ use Illuminate\Foundation\Validation\ValidatesRequests;
 
 abstract class Controller extends BaseController
 {
+		//Test ;
     use DispatchesJobs, ValidatesRequests;
 }
