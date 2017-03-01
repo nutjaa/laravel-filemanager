@@ -5,6 +5,7 @@ use Intervention\Image\Facades\Image;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Unisharp\Laravelfilemanager\Events\ImageIsUploading;
 use Unisharp\Laravelfilemanager\Events\ImageWasUploaded;
+use Storage ;
 
 /**
  * Class UploadController
@@ -50,8 +51,9 @@ class UploadController extends LfmController
             return $validation_message;
         }
 
+
         $new_filename  = $this->getNewName($file);
-        $new_file_path = parent::getCurrentPath($new_filename);
+        $new_file_path = tempnam( sys_get_temp_dir(), 'Tux');
 
         event(new ImageIsUploading($new_file_path));
         try {
@@ -59,15 +61,22 @@ class UploadController extends LfmController
                 Image::make($file->getRealPath())
                     ->orientate() //Apply orientation from exif data
                     ->save($new_file_path, 90);
+                $storePath = $this->getWorkingDir() . '/' . $new_filename ;
+                Storage::disk('s3')->put(
+                  $storePath,
+                  file_get_contents($new_file_path)
+                );
+                Storage::disk('s3')->setVisibility($storePath, 'public');
 
-                $this->makeThumb($new_filename);
+                $this->makeThumb($file , $new_filename);
             } else {
+                echo '2' ; die() ;
                 File::move($file->path(), $new_file_path);
             }
         } catch (\Exception $e) {
             return $this->error('invalid');
         }
-        event(new ImageWasUploaded(realpath($new_file_path)));
+        event(new ImageWasUploaded($this->getWorkingDir(),$new_filename));
 
         return $new_filename;
     }
@@ -128,15 +137,26 @@ class UploadController extends LfmController
         return $new_filename . '.' . $file->getClientOriginalExtension();
     }
 
-    private function makeThumb($new_filename)
+    private function makeThumb( $file , $new_filename)
     {
         // create thumb folder
-        $this->createFolderByPath(parent::getThumbPath());
+        $new_file_path = tempnam( sys_get_temp_dir(), 'Tux');
+        //$this->createFolderByPath(parent::getThumbPath());
+
+        $storePath = $this->getWorkingDir() . '/' . config('lfm.thumb_folder_name') . '/' . $new_filename ;
 
         // create thumb image
-        Image::make(parent::getCurrentPath($new_filename))
+        Image::make($file->getRealPath())
             ->fit(200, 200)
-            ->save(parent::getThumbPath($new_filename));
+            ->save($new_file_path);
+
+        Storage::disk('s3')->put(
+          $storePath,
+          file_get_contents($new_file_path)
+        );
+        Storage::disk('s3')->setVisibility($storePath, 'public');
+
+
     }
 
     private function useFile($new_filename)

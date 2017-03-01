@@ -16,9 +16,12 @@ class ResizeController extends LfmController
     public function getResize()
     {
         $ratio = 1.0;
-        $image = request('img');
+        $working_dir = $this->getWorkingDir();
+        $image = $this->getRequest('img');
+        $s3_file = config('filesystems.disks.s3.public_url') . $working_dir . '/' . $image ;
 
-        $original_image  = Image::make(parent::getCurrentPath($image));
+
+        $original_image  = Image::make($s3_file);
         $original_width  = $original_image->width();
         $original_height = $original_image->height();
 
@@ -42,7 +45,7 @@ class ResizeController extends LfmController
         }
 
         return view('laravel-filemanager::resize')
-            ->with('img', parent::getFileUrl($image))
+            ->with('img', $s3_file)
             ->with('height', number_format($height, 0))
             ->with('width', $width)
             ->with('original_height', $original_height)

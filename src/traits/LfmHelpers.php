@@ -4,6 +4,7 @@ namespace Unisharp\Laravelfilemanager\traits;
 
 use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Storage ;
 
 trait LfmHelpers
 {
@@ -119,7 +120,6 @@ trait LfmHelpers
     public function getName($file)
     {
         $lfm_file_path = $this->getInternalPath($file);
-
         $arr_dir = explode($this->ds, $lfm_file_path);
         $file_name = end($arr_dir);
 
@@ -130,11 +130,12 @@ trait LfmHelpers
     {
         $full_path = $this->translateToLfmPath($full_path);
         $full_path = $this->translateToUtf8($full_path);
+        /*
         $lfm_dir_start = strpos($full_path, $this->getPathPrefix('dir'));
         $working_dir_start = $lfm_dir_start + strlen($this->getPathPrefix('dir'));
         $lfm_file_path = $this->ds . substr($full_path, $working_dir_start);
-
-        return $this->removeDuplicateSlash($lfm_file_path);
+        */
+        return $this->removeDuplicateSlash($full_path);
     }
 
     private function translateToOsPath($path)
@@ -234,17 +235,16 @@ trait LfmHelpers
     public function getDirectories($path)
     {
         $thumb_folder_name = config('lfm.thumb_folder_name');
-        $all_directories = File::directories($path);
-
-        $arr_dir = [];
+        $all_directories = Storage::directories($path);
+        $arr_dir = [] ;
 
         foreach ($all_directories as $directory) {
             $directory_name = $this->getName($directory);
 
-            if ($directory_name !== $thumb_folder_name) {
+            if ($directory_name !== $thumb_folder_name && ! in_array($directory_name,config('lfm.resize_folder'))) {
                 $arr_dir[] = (object)[
                     'name' => $directory_name,
-                    'path' => $this->getInternalPath($directory)
+                    'path' => $directory
                 ];
             }
         }
@@ -255,33 +255,27 @@ trait LfmHelpers
     public function getFilesWithInfo($path)
     {
         $arr_files = [];
-
-        foreach (File::files($path) as $key => $file) {
+        $working_dir = $this->getWorkingDir()  ;
+        $files = Storage::files($path);
+        foreach ($files as $key => $file) {
             $file_name = $this->getName($file);
+            $file_url = config('filesystems.disks.s3.public_url').$file;
 
-            if ($this->fileIsImage($file)) {
-                $file_type = File::mimeType($file);
-                $icon = 'fa-image';
-            } else {
-                $extension = strtolower(File::extension($file_name));
-                $file_type = config('lfm.file_type_array.' . $extension) ?: 'File';
-                $icon = config('lfm.file_icon_array.' . $extension) ?: 'fa-file';
+            $icon = 'fa-image';
+
+            $thumb = $working_dir . '/' . config('lfm.thumb_folder_name') . '/' . $file_name ;
+
+            if (!Storage::disk('s3')->exists($thumb)) {
+                $thumb = $file ;
             }
-
-            $thumb_path = $this->getThumbPath($file_name);
-            if (File::exists($thumb_path)) {
-                $thumb_url = $this->getThumbUrl($file_name) . '?timestamp=' . filemtime($thumb_path);
-            } else {
-                $thumb_url = null;
-            }
-
+            $thumb_url = $this->removeDuplicateSlash(config('filesystems.disks.s3.public_url').$thumb);
 
             $arr_files[$key] = [
                 'name'      => $file_name,
-                'url'       => $this->getFileUrl($file_name),
-                'size'      => $this->humanFilesize(File::size($file)),
-                'updated'   => filemtime($file),
-                'type'      => $file_type,
+                'url'       => $file_url,
+                'size'      => $this->humanFilesize( Storage::size($file)),
+                'updated'   => Storage::lastModified($file),
+                'type'      => 'images',
                 'icon'      => $icon,
                 'thumb'     => $thumb_url
             ];
@@ -307,7 +301,11 @@ trait LfmHelpers
         if ($file instanceof UploadedFile) {
             $mime_type = $file->getMimeType();
         } else {
-            $mime_type = File::mimeType($file);
+            $mime_type = exif_imagetype($file);
+             if(in_array($mime_type , array(IMAGETYPE_GIF , IMAGETYPE_JPEG ,IMAGETYPE_PNG , IMAGETYPE_BMP)))
+            {
+                return true;
+            }
         }
 
         return starts_with($mime_type, 'image');
@@ -340,5 +338,19 @@ trait LfmHelpers
     public function isRunningOnWindows()
     {
         return strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
+    }
+
+    public function getWorkingDir(){
+        if(isset($_REQUEST['working_dir']) && $_REQUEST['working_dir']){
+            $path = $_REQUEST['working_dir'];
+        }else{
+            $path = 'assets' . '/' . request('working_dir');
+        }
+
+        return $this->removeDuplicateSlash($path); ;
+    }
+
+    public function getRequest($index){
+        return isset($_GET[$index])?$_GET[$index]:'' ;
     }
 }

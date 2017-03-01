@@ -1,7 +1,6 @@
 <?php namespace Unisharp\Laravelfilemanager\controllers;
 
 use Illuminate\Support\Facades\File;
-
 /**
  * Class ItemsController
  * @package Unisharp\Laravelfilemanager\controllers
@@ -15,14 +14,13 @@ class ItemsController extends LfmController
      */
     public function getItems()
     {
-        $path = $this->getCurrentPath();
-
+        $path = $this->getWorkingDir();
         return [
             'html' => (string)view($this->getView())->with([
-                'files'       => $this->getFilesWithInfo($path),
+                'files' => $this->getFilesWithInfo($path) ,
                 'directories' => $this->getDirectories($path)
             ]),
-            'working_dir' => $this->getInternalPath($path)
+            'working_dir' => $path
         ];
     }
 
@@ -30,7 +28,7 @@ class ItemsController extends LfmController
     private function getView()
     {
         $view_type = 'grid';
-        $show_list = request('show_list');
+        $show_list = isset($_GET['show_list'])? $_GET['show_list'] : '0' ;
 
         if ($show_list === "1") {
             $view_type = 'list';
