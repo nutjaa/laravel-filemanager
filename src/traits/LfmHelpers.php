@@ -268,7 +268,7 @@ trait LfmHelpers
             if (!Storage::disk('s3')->exists($thumb)) {
                 $thumb = $file ;
             }
-            $thumb_url = $this->removeDuplicateSlash(config('filesystems.disks.s3.public_url').$thumb);
+            $thumb_url = config('filesystems.disks.s3.public_url') . $this->removeDuplicateSlash( $thumb);
 
             $arr_files[$key] = [
                 'name'      => $file_name,
