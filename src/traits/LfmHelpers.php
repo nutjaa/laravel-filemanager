@@ -348,7 +348,7 @@ trait LfmHelpers
         }
 
         $path = $this->removeDuplicateSlash($path);
-        return $this->removeFirstSlash($$path);
+        return $this->removeFirstSlash($path);
     }
 
     public function getRequest($index){
