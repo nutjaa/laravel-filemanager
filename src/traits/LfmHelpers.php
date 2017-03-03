@@ -341,14 +341,21 @@ trait LfmHelpers
     }
 
     public function getWorkingDir(){
+        $slug_of_user = config('lfm.user_field');
+        $base_path = 'assets' . '/' . auth()->user()->$slug_of_user;
+        $path = $base_path ;
         if(isset($_REQUEST['working_dir']) && $_REQUEST['working_dir']){
             $path = $_REQUEST['working_dir'];
-        }else{
-            $path = 'assets' . '/' . request('working_dir');
         }
 
         $path = $this->removeDuplicateSlash($path);
-        return $this->removeFirstSlash($path);
+        $path = $this->removeFirstSlash($path);
+        $paths = explode('/', $path);
+
+        if(!isset($paths[1]) && $paths[1] != auth()->user()->$slug_of_user ){
+            $path = $base_path ;
+        }
+        return $path ;
     }
 
     public function getRequest($index){
