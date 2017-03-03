@@ -62,8 +62,8 @@ class FolderController extends LfmController
      */
     public function getAddfolder()
     {
-        $folder_name = isset($_GET['name'])?$_GET['name'] : '' ;
-        $working_dir = isset($_GET['working_dir'])?$_GET['working_dir'] : '' ;
+        $folder_name = $this->getRequest('name');
+        $working_dir = $this->getWorkingDir();
 
         $folder_name = $this->translateFromUtf8($folder_name);
 

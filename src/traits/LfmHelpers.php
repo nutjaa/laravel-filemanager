@@ -347,7 +347,8 @@ trait LfmHelpers
             $path = 'assets' . '/' . request('working_dir');
         }
 
-        return $this->removeDuplicateSlash($path); ;
+        $path = $this->removeDuplicateSlash($path);
+        return $this->removeFirstSlash($$path);
     }
 
     public function getRequest($index){
